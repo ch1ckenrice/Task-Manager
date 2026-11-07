@@ -1,23 +1,23 @@
 # Task Manager
 
-A simple Vanilla JavaScript task manager with local task storage in the browser.
+Simple task manager built with Vanilla JavaScript. Tasks are stored locally in the browser, so the app works without a server or third-party dependencies.
 
 ## Features
 
 - Add tasks with a title, description, and deadline.
-- Mark tasks as completed.
 - Edit tasks in a modal window.
-- Delete a single task or clear the whole list.
+- Mark tasks as completed or delete individual tasks.
+- Clear the complete list with confirmation.
 - Filter tasks by all, active, or completed.
-- View task statistics: total, active, and completed.
+- View total, active, and completed task statistics.
 - Save tasks and the selected filter in `localStorage`.
-- Show toast messages for main actions.
+- Receive toast feedback and contextual empty states.
+- Use the app with a keyboard: visible focus, Escape to close the editor, and focus trapping in the modal.
 
 ## Technologies
 
-- HTML
-- SCSS
-- CSS
+- HTML5
+- SCSS and CSS
 - Vanilla JavaScript
 - `localStorage`
 
@@ -25,40 +25,31 @@ A simple Vanilla JavaScript task manager with local task storage in the browser.
 
 ```text
 .
-├── index.html
-├── app.js
-├── styles.scss
-└── styles.css
+├── index.html      # application markup
+├── app.js          # task and localStorage logic
+├── styles.scss     # source styles
+├── styles.css      # stylesheet used by the app
+├── favicon.svg     # checklist-style favicon
+└── README.md
 ```
-
-`styles.scss` is the main stylesheet source file.
-
-`styles.css` is the compiled CSS file linked in `index.html`.
-
-`simple-task-manager/` contains a simplified learning version of the project.
 
 ## How to Run
 
-Open `index.html` in your browser.
+Open [index.html](index.html) in a browser. No server or dependency installation is required.
 
-The project does not require a server or dependency installation.
+## Working With Styles
 
-## Working With SCSS
-
-After editing `styles.scss`, compile it to CSS:
+After updating `styles.scss`, regenerate the CSS file:
 
 ```bash
 sass styles.scss styles.css --no-source-map
 ```
 
-## What I Practiced
+## What This Project Demonstrates
 
-- Working with the DOM.
-- Handling form, button, and checkbox events.
-- Using a task array as the main source of data.
-- Rendering HTML with JavaScript.
-- Saving data in `localStorage`.
-- Filtering with `filter`.
-- Finding tasks with `find`.
-- Safely inserting user text with `escapeHtml`.
-- Splitting styles into SCSS source and compiled CSS.
+- DOM manipulation, forms, events, and event delegation.
+- Safe rendering of user-supplied text with `escapeHtml`.
+- CRUD operations on a task array.
+- Filtering and statistics calculations.
+- `localStorage` persistence with read and write error handling.
+- Responsive styling and baseline accessibility for keyboard and screen-reader users.

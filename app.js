@@ -20,6 +20,8 @@
         resetBtn: document.getElementById('resetBtn'),
         list: document.getElementById('taskList'),
         empty: document.getElementById('emptyState'),
+        emptyTitle: document.getElementById('emptyTitle'),
+        emptyText: document.getElementById('emptyText'),
         clearAll: document.getElementById('clearAllBtn'),
         filterBtns: document.querySelectorAll('.filter-btn'),
         statTotal: document.getElementById('statTotal'),
@@ -41,6 +43,8 @@
     /* ----- State ----- */
     let tasks = loadTasks();
     let currentFilter = loadFilter();
+    let modalCloseTimer = null;
+    let lastFocusedElement = null;
 
     /* ============================================================
      * Storage layer
@@ -51,10 +55,20 @@
             const raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) return [];
             const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
+            if (!Array.isArray(parsed)) return [];
+
+            return parsed
+                .filter(task => task && typeof task === 'object' && typeof task.id === 'string' && typeof task.title === 'string')
+                .map(task => ({
+                    id: task.id,
+                    title: task.title,
+                    description: typeof task.description === 'string' ? task.description : '',
+                    deadline: typeof task.deadline === 'string' ? task.deadline : '',
+                    completed: task.completed === true,
+                    createdAt: typeof task.createdAt === 'string' ? task.createdAt : '',
+                }));
         } catch (err) {
-            console.warn('Не вдалося прочитати localStorage, скидаємо:', err);
-            localStorage.removeItem(STORAGE_KEY);
+            console.warn('Не вдалося прочитати задачі з localStorage:', err);
             return [];
         }
     }
@@ -69,12 +83,21 @@
     }
 
     function loadFilter() {
-        const saved = localStorage.getItem(FILTER_KEY);
-        return ['all', 'active', 'done'].includes(saved) ? saved : 'all';
+        try {
+            const saved = localStorage.getItem(FILTER_KEY);
+            return ['all', 'active', 'done'].includes(saved) ? saved : 'all';
+        } catch (err) {
+            console.warn('Не вдалося прочитати фільтр із localStorage:', err);
+            return 'all';
+        }
     }
 
     function saveFilter() {
-        localStorage.setItem(FILTER_KEY, currentFilter);
+        try {
+            localStorage.setItem(FILTER_KEY, currentFilter);
+        } catch (err) {
+            console.warn('Не вдалося зберегти фільтр у localStorage:', err);
+        }
     }
 
     /* ============================================================
@@ -108,7 +131,7 @@
     }
 
     function deleteTask(id) {
-        const el = els.list.querySelector(`[data-id="${id}"]`);
+        const el = Array.from(els.list.children).find(item => item.dataset.id === id);
         if (el) {
             el.classList.add('removing');
             setTimeout(() => {
@@ -167,7 +190,7 @@
     }
 
     /** Повертає рядок дедлайну + клас стану ('overdue' | 'soon' | 'ok' | ''). */
-    function formatDeadline(iso) {
+    function formatDeadline(iso, isCompleted) {
         if (!iso) return { text: '', state: '' };
         const d = new Date(iso);
         if (isNaN(d.getTime())) return { text: '', state: '' };
@@ -179,6 +202,8 @@
             hour: '2-digit',
             minute: '2-digit',
         });
+
+        if (isCompleted) return { text, state: 'complete' };
 
         const now = Date.now();
         const diffMs = d.getTime() - now;
@@ -207,10 +232,11 @@
         li.setAttribute('data-id', task.id);
         if (task.completed) li.classList.add('completed');
 
-        const { text: deadlineText, state: deadlineState } = formatDeadline(task.deadline);
+        const { text: deadlineText, state: deadlineState } = formatDeadline(task.deadline, task.completed);
         const deadlineClass =
             deadlineState === 'overdue' ? 'deadline-overdue' :
-            deadlineState === 'soon' ? 'deadline-soon' : '';
+            deadlineState === 'soon' ? 'deadline-soon' :
+            deadlineState === 'complete' ? 'deadline-complete' : '';
 
         const deadlineIcon = task.deadline
             ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
@@ -223,7 +249,7 @@
         const deadlineHtml = deadlineText
             ? `<div class="task-deadline ${deadlineClass}">
                     ${deadlineIcon}
-                    <span>${deadlineText}${deadlineState === 'overdue' ? ' • прострочено' : deadlineState === 'soon' ? ' • скоро' : ''}</span>
+                    <time datetime="${escapeHtml(task.deadline)}">${deadlineText}${deadlineState === 'overdue' ? ' • прострочено' : deadlineState === 'soon' ? ' • скоро' : ''}</time>
                 </div>`
             : '';
 
@@ -233,7 +259,7 @@
                     type="checkbox"
                     class="task-checkbox"
                     ${task.completed ? 'checked' : ''}
-                    aria-label="Позначити виконаною">
+                    aria-label="Позначити ${task.completed ? 'невиконаною' : 'виконаною'}: ${escapeHtml(task.title)}">
 
                 <div class="task-content">
                     <h3 class="task-title">${escapeHtml(task.title)}</h3>
@@ -243,15 +269,17 @@
 
                 <div class="task-actions">
                     <button
+                        type="button"
                         class="action-btn edit"
                         data-action="edit"
-                        aria-label="Редагувати">
+                        aria-label="Редагувати задачу: ${escapeHtml(task.title)}">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     </button>
                     <button
+                        type="button"
                         class="action-btn delete"
                         data-action="delete"
-                        aria-label="Видалити">
+                        aria-label="Видалити задачу: ${escapeHtml(task.title)}">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
                     </button>
                 </div>
@@ -267,20 +295,34 @@
         els.statTotal.textContent = total;
         els.statActive.textContent = active;
         els.statDone.textContent = done;
+        els.clearAll.disabled = total === 0;
     }
 
     function renderFilters() {
         els.filterBtns.forEach(btn => {
             const isActive = btn.dataset.filter === currentFilter;
             btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-pressed', String(isActive));
         });
+    }
+
+    function renderEmptyState(hasVisibleTasks) {
+        const emptyContent = currentFilter === 'active' && tasks.length > 0
+            ? ['Активних задач немає', 'Усі поточні задачі виконано.']
+            : currentFilter === 'done' && tasks.length > 0
+                ? ['Виконаних задач немає', 'Позначте задачу виконаною, щоб вона з’явилася тут.']
+                : ['Задач поки немає', 'Додайте першу задачу за допомогою форми вище.'];
+
+        els.emptyTitle.textContent = emptyContent[0];
+        els.emptyText.textContent = emptyContent[1];
+        els.empty.classList.toggle('hidden', hasVisibleTasks);
     }
 
     function render() {
         const visible = getVisibleTasks();
         els.list.innerHTML = '';
         visible.forEach(t => els.list.appendChild(renderTask(t)));
-        els.empty.classList.toggle('hidden', visible.length > 0);
+        renderEmptyState(visible.length > 0);
         renderStats();
         renderFilters();
     }
@@ -317,6 +359,8 @@
     function openEditModal(id) {
         const t = tasks.find(x => x.id === id);
         if (!t) return;
+        if (modalCloseTimer) clearTimeout(modalCloseTimer);
+        lastFocusedElement = document.activeElement;
         els.editId.value = t.id;
         els.editTitle.value = t.title;
         els.editDescription.value = t.description;
@@ -324,12 +368,43 @@
         els.editDeadline.value = t.deadline ? t.deadline.slice(0, 16) : '';
         els.modal.classList.remove('hidden');
         els.modal.classList.add('show');
+        document.body.classList.add('modal-open');
         setTimeout(() => els.editTitle.focus(), 50);
     }
 
     function closeEditModal() {
+        if (els.modal.classList.contains('hidden')) return;
         els.modal.classList.remove('show');
-        setTimeout(() => els.modal.classList.add('hidden'), 150);
+        document.body.classList.remove('modal-open');
+        modalCloseTimer = setTimeout(() => {
+            els.modal.classList.add('hidden');
+            modalCloseTimer = null;
+        }, 150);
+
+        if (lastFocusedElement instanceof HTMLElement && document.contains(lastFocusedElement)) {
+            lastFocusedElement.focus();
+        } else {
+            els.title.focus();
+        }
+    }
+
+    function trapModalFocus(e) {
+        if (e.key !== 'Tab' || els.modal.classList.contains('hidden')) return;
+
+        const focusable = Array.from(els.modal.querySelectorAll(
+            'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ));
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!first || !last) return;
+
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
     }
 
     /* ============================================================
@@ -342,10 +417,12 @@
         const title = els.title.value.trim();
         if (!title) {
             els.titleError.classList.remove('hidden');
+            els.title.setAttribute('aria-invalid', 'true');
             els.title.focus();
             return;
         }
         els.titleError.classList.add('hidden');
+        els.title.setAttribute('aria-invalid', 'false');
         addTask({
             title,
             description: els.description.value,
@@ -356,7 +433,15 @@
     });
 
     els.title.addEventListener('input', () => {
-        if (els.title.value.trim()) els.titleError.classList.add('hidden');
+        if (els.title.value.trim()) {
+            els.titleError.classList.add('hidden');
+            els.title.setAttribute('aria-invalid', 'false');
+        }
+    });
+
+    els.form.addEventListener('reset', () => {
+        els.titleError.classList.add('hidden');
+        els.title.setAttribute('aria-invalid', 'false');
     });
 
     // Делегування подій на списку
@@ -423,7 +508,9 @@
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !els.modal.classList.contains('hidden')) {
             closeEditModal();
+            return;
         }
+        trapModalFocus(e);
     });
 
     /* ============================================================

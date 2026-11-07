@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Manager — localStorage</title>
+    <meta name="theme-color" content="#4f46e5">
+    <title>Task Manager</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -18,7 +20,8 @@
         <p>Простий менеджер задач із локальним збереженням</p>
     </header>
 
-    <section class="stats-grid" id="stats">
+    <main>
+    <section class="stats-grid" id="stats" aria-label="Статистика задач">
         <div class="stat-card">
             <div class="stat-number stat-total" id="statTotal">0</div>
             <div class="stat-label">Всього</div>
@@ -44,8 +47,10 @@
                     name="title"
                     required
                     maxlength="120"
+                    aria-describedby="titleError"
+                    aria-invalid="false"
                     placeholder="Наприклад: Купити продукти">
-                <p class="hidden error-message" id="titleError">Введіть назву задачі</p>
+                <p class="hidden error-message" id="titleError" role="alert">Введіть назву задачі</p>
             </div>
 
             <div class="form-field">
@@ -76,12 +81,12 @@
     </section>
 
     <section class="toolbar">
-        <div class="filter-tabs" role="tablist">
-            <button data-filter="all" class="filter-btn active">Усі</button>
-            <button data-filter="active" class="filter-btn">Активні</button>
-            <button data-filter="done" class="filter-btn">Виконані</button>
+        <div class="filter-tabs" role="group" aria-label="Фільтр задач">
+            <button type="button" data-filter="all" class="filter-btn active" aria-pressed="true">Усі</button>
+            <button type="button" data-filter="active" class="filter-btn" aria-pressed="false">Активні</button>
+            <button type="button" data-filter="done" class="filter-btn" aria-pressed="false">Виконані</button>
         </div>
-        <button id="clearAllBtn" class="clear-all-btn">
+        <button type="button" id="clearAllBtn" class="clear-all-btn" disabled>
             <svg xmlns="http://www.w3.org/2000/svg" class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/>
             </svg>
@@ -90,17 +95,18 @@
     </section>
 
     <section>
-        <ul id="taskList" class="task-list"></ul>
-        <div id="emptyState" class="hidden empty-state">
+        <ul id="taskList" class="task-list" aria-label="Список задач"></ul>
+        <div id="emptyState" class="hidden empty-state" role="status" aria-live="polite">
             <div class="empty-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon-md" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                 </svg>
             </div>
-            <p class="empty-title">Задач поки немає</p>
-            <p class="empty-text">Додайте першу задачу за допомогою форми вище</p>
+            <p class="empty-title" id="emptyTitle">Задач поки немає</p>
+            <p class="empty-text" id="emptyText">Додайте першу задачу за допомогою форми вище</p>
         </div>
     </section>
+    </main>
 
     <footer class="app-footer">
         Дані зберігаються локально в браузері (localStorage)
@@ -108,10 +114,10 @@
 </div>
 
 <div id="editModal" class="hidden modal">
-    <div class="modal-dialog" role="dialog" aria-modal="true">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
         <div class="modal-header">
-            <h3>Редагувати задачу</h3>
-            <button id="closeModal" class="icon-button" aria-label="Закрити">
+            <h3 id="editModalTitle">Редагувати задачу</h3>
+            <button type="button" id="closeModal" class="icon-button" aria-label="Закрити">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon-md" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -139,7 +145,7 @@
     </div>
 </div>
 
-<div id="toast" class="hidden toast"></div>
+<div id="toast" class="hidden toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script src="app.js"></script>
 </body>
